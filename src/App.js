@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import supabase from "./supabase";
 
-const API = "https://presence-badminton-backend.vercel.app";
+const API = "https://presence-badminton-backend.onrender.com";
 
 const COACHS = [
-  "coach1@club.fr",
-  "president.abac92@gmail.com",
   "secretaire.abac92@gmail.com",
 ];
 
@@ -25,7 +23,7 @@ function App() {
   const [presences, setPresences] = useState({});
 
   // =============================
-  // SESSION AUTO (IMPORTANT)
+  // SESSION
   // =============================
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -50,10 +48,7 @@ function App() {
       password,
     });
 
-    if (error) {
-      alert("Erreur login");
-      return;
-    }
+    if (error) return alert("Erreur login");
 
     if (!COACHS.includes(data.user.email)) {
       alert("Accès refusé");
@@ -70,7 +65,7 @@ function App() {
   };
 
   // =============================
-  // LOAD CRENEAUX + DATES
+  // LOAD DATA
   // =============================
   useEffect(() => {
     if (!user) return;
@@ -78,72 +73,43 @@ function App() {
     fetch(`${API}/api/creneaux`)
       .then((r) => r.json())
       .then((data) => {
-        console.log("CRENEAUX:", data);
-        setCreneaux(
-          data.sort((a, b) =>
-            a.creneau_code.localeCompare(b.creneau_code)
-          )
-        );
+        if (!Array.isArray(data)) return;
+        setCreneaux(data);
       });
 
     fetch(`${API}/api/dates`)
       .then((r) => r.json())
       .then((data) => {
-        console.log("DATES:", data);
+        if (!Array.isArray(data)) return;
         setDates(data);
       });
+
   }, [user]);
 
-  // =============================
-  // LOAD JOUEURS
-  // =============================
   useEffect(() => {
-    if (!creneau) {
-      setJoueurs([]);
-      return;
-    }
+    if (!creneau) return setJoueurs([]);
 
-    console.log("FETCH JOUEURS:", creneau);
-
-    fetch(`${API}/api/joueurs?creneau=${encodeURIComponent(creneau)}`)
+    fetch(`${API}/api/joueurs?creneau=${creneau}`)
       .then((r) => r.json())
-      .then((data) => {
-        console.log("JOUEURS:", data);
-        setJoueurs(data);
-      });
+      .then(setJoueurs);
+
   }, [creneau]);
 
-  // =============================
-  // LOAD PRESENCES
-  // =============================
   useEffect(() => {
-    if (!creneau || !date) {
-      setPresences({});
-      return;
-    }
-
-    console.log("FETCH PRESENCES:", creneau, date);
+    if (!creneau || !date) return;
 
     fetch(`${API}/api/presences?creneau=${creneau}&date=${date}`)
       .then((r) => r.json())
       .then((data) => {
         const map = {};
-        data.forEach((p) => {
-          map[p.licence] = p.present;
-        });
+        data.forEach((p) => (map[p.licence] = p.present));
         setPresences(map);
       });
+
   }, [creneau, date]);
 
   // =============================
-  // SAVE PRESENCE
-  // =============================
   const setPresence = async (licence, present) => {
-    if (!date) {
-      alert("Choisir une date !");
-      return;
-    }
-
     await fetch(`${API}/api/presence`, {
       method: "POST",
       headers: {
@@ -157,179 +123,57 @@ function App() {
       }),
     });
 
-    setPresences((prev) => ({
-      ...prev,
-      [licence]: present,
-    }));
+    setPresences((prev) => ({ ...prev, [licence]: present }));
   };
 
-  // =============================
-  // FILTRE DATES (jour du créneau)
-  // =============================
-  const getJour = () => {
-    const c = creneaux.find((c) => c.creneau_code === creneau);
-    return c?.jour;
-  };
-
-  const datesFiltrees = dates
-    .filter((d) => {
-      if (!creneau) return false;
-
-      const jours = [
-        "DIMANCHE",
-        "LUNDI",
-        "MARDI",
-        "MERCREDI",
-        "JEUDI",
-        "VENDREDI",
-        "SAMEDI",
-      ];
-
-      const dateObj = new Date(d.date_seance);
-      return jours[dateObj.getDay()] === getJour();
-    })
-    .sort((a, b) => new Date(b.date_seance) - new Date(a.date_seance));
-
-  // =============================
-  // LOGIN SCREEN
   // =============================
   if (!user) {
     return (
       <div style={{ padding: 20 }}>
-        <h2>Connexion entraîneur</h2>
-
-        <input
-          placeholder="email"
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
+        <h2>Connexion</h2>
+        <input onChange={(e) => setEmail(e.target.value)} placeholder="email" />
         <br /><br />
-
-        <input
-          type="password"
-          placeholder="mot de passe"
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
+        <input type="password" onChange={(e) => setPassword(e.target.value)} placeholder="password" />
         <br /><br />
-
-        <button onClick={handleLogin}>
-          Se connecter
-        </button>
+        <button onClick={handleLogin}>Login</button>
       </div>
     );
   }
 
-  // =============================
-  // APP
-  // =============================
   return (
     <div style={{ padding: 20 }}>
-      <h1>🏸 Présences Badminton</h1>
-
-      <button onClick={handleLogout}>Se déconnecter</button>
+      <h1>🏸 Présences</h1>
+      <button onClick={handleLogout}>Logout</button>
 
       <br /><br />
 
-      {/* FILTRES */}
-      <div style={{ display: "flex", gap: 10 }}>
-        <select
-          value={creneau}
-          onChange={(e) => {
-            console.log("SELECT CRENEAU:", e.target.value);
-            setCreneau(e.target.value);
-            setDate("");
-          }}
-        >
-          <option value="">Choisir un créneau</option>
+      <select value={creneau} onChange={(e) => setCreneau(e.target.value)}>
+        <option value="">Créneau</option>
+        {creneaux.map((c) => (
+          <option key={c.creneau_code} value={c.creneau_code}>
+            {c.creneau_code} - {c.jour}
+          </option>
+        ))}
+      </select>
 
-          {creneaux.map((c) => (
-            <option key={c.creneau_code} value={c.creneau_code}>
-              {c.creneau_code} — {c.jour} {c.horaire}
-            </option>
-          ))}
-        </select>
+      <select value={date} onChange={(e) => setDate(e.target.value)}>
+        <option value="">Date</option>
+        {dates.map((d) => (
+          <option key={d.date_seance} value={d.date_seance}>
+            {d.date_seance}
+          </option>
+        ))}
+      </select>
 
-        <select
-          value={date}
-          onChange={(e) => {
-            console.log("SELECT DATE:", e.target.value);
-            setDate(e.target.value);
-          }}
-        >
-          <option value="">Choisir une date</option>
+      <h2>Joueurs</h2>
 
-          {datesFiltrees.map((d) => {
-            const iso = d.date_seance.split("T")[0];
-            const dateObj = new Date(d.date_seance);
-
-            return (
-              <option key={iso} value={iso}>
-                {dateObj.toLocaleDateString("fr-FR", {
-                  weekday: "long",
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                })}
-              </option>
-            );
-          })}
-        </select>
-      </div>
-
-      {/* JOUEURS */}
-      <h2 style={{ marginTop: 20 }}>👥 Joueurs</h2>
-
-      {!creneau ? (
-        <p>Choisir un créneau</p>
-      ) : joueurs.length === 0 ? (
-        <p>Aucun joueur trouvé</p>
-      ) : (
-        joueurs.map((j) => {
-          const present = presences[j.licence];
-
-          return (
-            <div
-              key={j.licence}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                borderBottom: "1px solid #ddd",
-                padding: 5,
-              }}
-            >
-              <span>
-                {j.prenom} {j.nom}
-              </span>
-
-              <div>
-                <button
-                  onClick={() => setPresence(j.licence, true)}
-                  style={{
-                    background:
-                      present === true ? "green" : "#ccc",
-                    color: "white",
-                    marginRight: 5,
-                  }}
-                >
-                  Présent
-                </button>
-
-                <button
-                  onClick={() => setPresence(j.licence, false)}
-                  style={{
-                    background:
-                      present === false ? "red" : "#ccc",
-                    color: "white",
-                  }}
-                >
-                  Absent
-                </button>
-              </div>
-            </div>
-          );
-        })
-      )}
+      {joueurs.map((j) => (
+        <div key={j.licence}>
+          {j.nom} {j.prenom}
+          <button onClick={() => setPresence(j.licence, true)}>✔</button>
+          <button onClick={() => setPresence(j.licence, false)}>✖</button>
+        </div>
+      ))}
     </div>
   );
 }
