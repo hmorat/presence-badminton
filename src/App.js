@@ -3,18 +3,17 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import './App.css';
 
-// Remplace par ton URL Render si elle est différente
 const API = "https://presence-badminton-backend.onrender.com";
 
 function App() {
   const [creneaux, setCreneaux] = useState([]);
   const [creneau, setCreneau] = useState("");
   const [date, setDate] = useState(new Date());
-  const [joueurs, setJoueurs] = useState([]); // La liste complète (Nom, Prénom, Licence)
-  const [presences, setPresences] = useState({}); // Le statut coché (Vrai/Faux)
-  const [message, setMessage] = useState("");
+  const [joueurs, setJoueurs] = useState([]); 
+  const [presences, setPresences] = useState({}); 
+  const [loading, setLoading] = useState(false);
 
-  // 1. Charger les créneaux au démarrage
+  // 1. Charger les créneaux
   useEffect(() => {
     fetch(`${API}/api/creneaux`)
       .then(res => res.json())
@@ -22,133 +21,122 @@ function App() {
         setCreneaux(data);
         if (data.length > 0) setCreneau(data[0].creneau_code);
       })
-      .catch(err => console.error("Erreur créneaux:", err));
+      .catch(err => console.error("Erreur chargement créneaux:", err));
   }, []);
 
-  // 2. Charger les joueurs quand le créneau ou la date change
+  // 2. Charger les joueurs (La partie critique)
   useEffect(() => {
     if (creneau && date) {
+      setLoading(true);
       const dStr = date.toISOString().split("T")[0];
       
+      console.log(`Appel API pour : ${creneau} le ${dStr}`);
+
       fetch(`${API}/api/joueurs?creneau=${encodeURIComponent(creneau)}&date=${dStr}`)
         .then(res => res.json())
         .then(data => {
-          if (Array.isArray(data)) {
-            setJoueurs(data); // On stocke la liste pour l'affichage
-            
-            // On prépare l'état des cases à cocher
+          console.log("Données brutes reçues du serveur :", data);
+
+          if (Array.isArray(data) && data.length > 0) {
+            // On force les données à avoir le bon format (casse, noms de colonnes)
+            const listeNormalisee = data.map(j => ({
+              licence: j.licence || j.Licence || "",
+              nom: j.nom || j.Nom || "Sans nom",
+              prenom: j.prenom || j.Prenom || "Sans prénom",
+              presence: j.presence === true
+            }));
+
+            setJoueurs(listeNormalisee);
+
             const map = {};
-            data.forEach(j => {
+            listeNormalisee.forEach(j => {
               map[j.licence] = j.presence;
             });
             setPresences(map);
+          } else {
+            console.warn("Le serveur a renvoyé une liste vide.");
+            setJoueurs([]);
           }
+          setLoading(false);
         })
-        .catch(err => console.error("Erreur chargement joueurs:", err));
+        .catch(err => {
+          console.error("Erreur Fetch joueurs:", err);
+          setLoading(false);
+        });
     }
   }, [creneau, date]);
 
-  // 3. Inverser la présence quand on clique sur une ligne
   const togglePresence = (licence) => {
-    setPresences(prev => ({
-      ...prev,
-      [licence]: !prev[licence]
-    }));
+    setPresences(prev => ({ ...prev, [licence]: !prev[licence] }));
   };
 
-  // 4. Sauvegarder sur le serveur
   const sauvegarder = () => {
     const dStr = date.toISOString().split("T")[0];
-    
-    // On prépare les données à envoyer
-    const donnees = joueurs.map(j => ({
-      licence: j.licence,
-      nom: j.nom,
-      prenom: j.prenom,
-      presence: presences[j.licence] || false
-    }));
+    const payload = {
+      creneau: creneau,
+      date: dStr,
+      joueurs: joueurs.map(j => ({
+        ...j,
+        presence: presences[j.licence] || false
+      }))
+    };
 
     fetch(`${API}/api/presences`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        creneau: creneau,
-        date: dStr,
-        joueurs: donnees
-      })
+      body: JSON.stringify(payload)
     })
-    .then(res => res.json())
-    .then(() => {
-      setMessage("✅ Sauvegardé avec succès !");
-      setTimeout(() => setMessage(""), 3000);
-    })
-    .catch(err => {
-      console.error(err);
-      setMessage("❌ Erreur lors de la sauvegarde.");
-    });
+    .then(() => alert("Sauvegardé !"))
+    .catch(err => alert("Erreur de sauvegarde"));
   };
 
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Badminton - Présences</h1>
+        <h1>Badminton - Appel</h1>
         
         <div className="controls">
           <select value={creneau} onChange={(e) => setCreneau(e.target.value)}>
             {creneaux.map(c => (
               <option key={c.creneau_code} value={c.creneau_code}>
-                {c.creneau_code} : {c.jour} {c.heure_debut}
+                {c.creneau_code}
               </option>
             ))}
           </select>
 
-          <DatePicker 
-            selected={date} 
-            onChange={(d) => setDate(d)} 
-            dateFormat="dd/MM/yyyy"
-          />
+          <DatePicker selected={date} onChange={d => setDate(d)} dateFormat="dd/MM/yyyy" />
         </div>
 
-        {message && <p className="status-message">{message}</p>}
-
-        <div className="liste-joueurs">
-          {joueurs.length > 0 ? (
-            <table>
-              <thead>
-                <tr>
-                  <th>Nom</th>
-                  <th>Prénom</th>
-                  <th>Présent</th>
-                </tr>
-              </thead>
-              <tbody>
-                {joueurs.map(j => (
-                  <tr 
-                    key={j.licence} 
-                    onClick={() => togglePresence(j.licence)}
-                    className={presences[j.licence] ? "present" : "absent"}
-                  >
-                    <td>{j.nom}</td>
-                    <td>{j.prenom}</td>
-                    <td>
-                      <input 
-                        type="checkbox" 
-                        checked={presences[j.licence] || false} 
-                        readOnly 
-                      />
-                    </td>
+        {loading ? <p>Chargement des joueurs...</p> : (
+          <div className="liste-container">
+            {joueurs.length > 0 ? (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nom</th>
+                    <th>Prénom</th>
+                    <th>Présence</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p>Aucun joueur trouvé pour ce créneau.</p>
-          )}
-        </div>
+                </thead>
+                <tbody>
+                  {joueurs.map(j => (
+                    <tr key={j.licence} onClick={() => togglePresence(j.licence)}>
+                      <td>{j.nom}</td>
+                      <td>{j.prenom}</td>
+                      <td>
+                        <input type="checkbox" checked={presences[j.licence] || false} readOnly />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p style={{ color: 'orange' }}>Aucun joueur trouvé. Vérifie tes tables Supabase.</p>
+            )}
+          </div>
+        )}
 
-        <button className="save-btn" onClick={sauvegarder}>
-          Enregistrer les présences
-        </button>
+        <button onClick={sauvegarder} className="save-btn">Enregistrer</button>
       </header>
     </div>
   );
