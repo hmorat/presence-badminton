@@ -11,7 +11,6 @@ function App() {
   const [presences, setPresences] = useState({});
   const [isExporting, setIsExporting] = useState(false);
 
-  // 1. Chargement des créneaux pour l'interface
   useEffect(() => {
     fetch(`${API}/api/creneaux`)
       .then(res => res.json())
@@ -22,7 +21,6 @@ function App() {
       .catch(err => console.error("Erreur API créneaux:", err));
   }, []);
 
-  // 2. Dates pour le sélecteur (Interface)
   const datesSaison = useMemo(() => {
     if (!selectedCreneau || !selectedCreneau.jour) return [];
     const dates = [];
@@ -46,7 +44,6 @@ function App() {
     }
   }, [datesSaison]);
 
-  // 3. Chargement des joueurs pour l'affichage
   useEffect(() => {
     if (selectedCreneau && date) {
       fetch(`${API}/api/joueurs?creneau=${selectedCreneau.creneau_code}&date=${date}`)
@@ -60,22 +57,12 @@ function App() {
     }
   }, [selectedCreneau, date]);
 
-  // --- FONCTION D'EXPORT GLOBAL (BASÉE SUR LA BDD) ---
   const exporterToutDepuisBDD = async () => {
     setIsExporting(true);
     try {
-      // On récupère TOUTES les lignes de la table presences via le backend
-      // Note : Il faudra s'assurer que ton backend a une route pour tout récupérer
-      // Si tu n'as pas de route globale, on va boucler sur les dates enregistrées
       const response = await fetch(`${API}/api/export-global`); 
       const data = await response.json();
-
-      if (!data || data.length === 0) {
-        alert("Aucune donnée de présence enregistrée dans la base.");
-        return;
-      }
-
-      // Formatage pour l'Excel
+      if (!data || data.length === 0) return alert("Aucune donnée enregistrée.");
       const formattedData = data.map(row => ({
         "Code Créneau": row.creneau_code,
         "Date Séance": new Date(row.date_seance).toLocaleDateString('fr-FR'),
@@ -83,14 +70,12 @@ function App() {
         "Prénom": row.prenom,
         "État": row.present ? "PRÉSENT" : "ABSENT"
       }));
-
       const ws = XLSX.utils.json_to_sheet(formattedData);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Historique Présences");
-      XLSX.writeFile(wb, "Historique_Complet_Presences.xlsx");
+      XLSX.utils.book_append_sheet(wb, ws, "Historique");
+      XLSX.writeFile(wb, "Historique_Presences.xlsx");
     } catch (error) {
-      console.error(error);
-      alert("Erreur lors de l'export. Vérifiez que la route /api/export-global est prête.");
+      alert("Erreur lors de l'export.");
     } finally {
       setIsExporting(false);
     }
@@ -110,23 +95,25 @@ function App() {
   };
 
   return (
-    <div style={{ padding: '15px', maxWidth: '500px', margin: 'auto', fontFamily: 'sans-serif' }}>
+    <div style={{ padding: '15px', maxWidth: '500px', margin: 'auto', fontFamily: 'sans-serif', backgroundColor: '#f9f9f9', minHeight: '100vh' }}>
       <h2 style={{ textAlign: 'center' }}>🏸 Bad Présences</h2>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', backgroundColor: '#fff', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
         <label><b>Créneau :</b></label>
         <select 
-          style={{ padding: '12px', borderRadius: '8px' }}
+          style={{ padding: '12px', borderRadius: '8px', fontSize: '15px' }}
           value={selectedCreneau?.creneau_code || ""}
           onChange={(e) => setSelectedCreneau(creneaux.find(c => c.creneau_code === e.target.value))}
         >
           {creneaux.map(c => (
-            <option key={c.creneau_code} value={c.creneau_code}>{c.creneau_code} : {c.jour} ({c.horaire})</option>
+            <option key={c.creneau_code} value={c.creneau_code}>
+              {c.creneau_code} : {c.jour} ({c.horaire}) - {c.entraineur || "Sans coach"}
+            </option>
           ))}
         </select>
 
         <label><b>Séance :</b></label>
-        <select value={date} onChange={(e) => setDate(e.target.value)} style={{ padding: '12px', borderRadius: '8px' }}>
+        <select value={date} onChange={(e) => setDate(e.target.value)} style={{ padding: '12px', borderRadius: '8px', fontSize: '15px' }}>
           {datesSaison.map(d => (
             <option key={d} value={d}>{new Date(d + "T12:00:00").toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</option>
           ))}
@@ -142,20 +129,20 @@ function App() {
       </div>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-        <button onClick={() => {const m={}; joueurs.forEach(j=>m[j.licence]=true); setPresences(m)}} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #2196F3' }}>Tout Présent</button>
-        <button onClick={() => setPresences({})} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}>Tout Absent</button>
+        <button onClick={() => {const m={}; joueurs.forEach(j=>m[j.licence]=true); setPresences(m)}} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #2196F3', backgroundColor: '#E3F2FD' }}>Tout Présent</button>
+        <button onClick={() => setPresences({})} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc', backgroundColor: '#fff' }}>Tout Absent</button>
       </div>
 
       <div style={{ border: '1px solid #eee', borderRadius: '10px', backgroundColor: '#fff', overflow: 'hidden' }}>
         {joueurs.map(j => (
           <div key={j.licence} onClick={() => setPresences(p => ({ ...p, [j.licence]: !p[j.licence] }))} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: '1px solid #eee', alignItems: 'center', backgroundColor: presences[j.licence] ? '#e8f5e9' : 'transparent' }}>
             <span>{j.nom} {j.prenom}</span>
-            <input type="checkbox" checked={presences[j.licence] || false} readOnly />
+            <input type="checkbox" checked={presences[j.licence] || false} readOnly style={{ transform: 'scale(1.3)' }} />
           </div>
         ))}
       </div>
 
-      <button onClick={sauvegarder} style={{ width: '100%', marginTop: '20px', padding: '16px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
+      <button onClick={sauvegarder} style={{ width: '100%', marginTop: '20px', padding: '16px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '17px', cursor: 'pointer' }}>
         💾 ENREGISTRER
       </button>
     </div>
