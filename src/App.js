@@ -66,17 +66,31 @@ function App() {
   }, [creneau]);
 
   useEffect(() => {
-    if (creneau && date) {
-      const dStr = date.toISOString().split("T")[0];
-      fetch(`${API}/api/presences?creneau=${creneau}&date=${dStr}`)
-        .then(res => res.json())
-        .then(data => {
-          const map = {};
-          if (Array.isArray(data)) data.forEach(p => map[p.licence] = p.present);
-          setPresences(map);
-        });
-    }
-  }, [creneau, date]);
+  if (creneau && date) {
+    // On s'assure d'avoir la date au format YYYY-MM-DD
+    const dStr = date.toISOString().split("T")[0];
+
+    // 1. On change 'presences' par 'joueurs' dans l'URL
+    fetch(`${API}/api/joueurs?creneau=${encodeURIComponent(creneau)}&date=${dStr}`)
+      .then(res => res.json())
+      .then(data => {
+        const map = {};
+        if (Array.isArray(data)) {
+          // 2. Attention : dans le backend on a utilisé le champ 'presence' 
+          // (et non 'present'). On adapte donc ici :
+          data.forEach(p => {
+            map[p.licence] = p.presence; 
+          });
+        }
+        setPresences(map);
+        
+        // 3. Optionnel : Si ton state 'joueurs' est géré ici, 
+        // n'oublie pas de le mettre à jour pour l'affichage
+        // setJoueurs(data); 
+      })
+      .catch(err => console.error("Erreur chargement joueurs:", err));
+  }
+}, [creneau, date]);
 
   const toggle = async (licence, val) => {
     const dStr = date.toISOString().split("T")[0];
