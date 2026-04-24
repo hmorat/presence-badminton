@@ -1,38 +1,101 @@
 body {
   margin: 0;
-  font-family: Arial;
-  background: #f4f6f9;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f0f2f5;
+  color: #1c1e21;
 }
 
 .dashboard {
-  padding: 20px;
-}
-
-.filter {
-  margin-bottom: 20px;
-}
-
-select {
-  padding: 6px;
-  margin-left: 10px;
-}
-
-.grid {
-  display: grid;
-  gap: 20px;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  padding: 10px;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 .card {
   background: white;
-  padding: 15px;
+  padding: 12px;
   border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 10px;
 }
 
-.row {
+.filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 15px;
+}
+
+.export-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 5px;
+}
+
+.btn-export-small {
+  padding: 6px 12px;
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 15px;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+/* Ligne joueur compacte */
+.player-card {
   display: flex;
   justify-content: space-between;
-  padding: 6px 0;
-  border-bottom: 1px solid #eee;
+  align-items: center;
+  gap: 10px;
+}
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden; /* Évite que le nom déborde */
+}
+
+.player-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  辅助-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.licence-tag {
+  font-size: 0.7rem;
+  color: #888;
+}
+
+.actions {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-presence {
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+  min-width: 65px;
+}
+
+.btn-logout {
+  padding: 5px 10px;
+  background: #e4e6eb;
+  border: none;
+  border-radius: 5px;
+  font-size: 11px;
 }
