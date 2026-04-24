@@ -9,7 +9,6 @@ function App() {
   const [joueurs, setJoueurs] = useState([]);
   const [presences, setPresences] = useState({});
 
-  // 1. Charger les créneaux complets
   useEffect(() => {
     fetch(`${API}/api/creneaux`)
       .then(res => res.json())
@@ -19,18 +18,27 @@ function App() {
       });
   }, []);
 
-  // 2. Générer les dates de la saison pour le jour donné
+  // Génération des dates de la saison
   const datesSaison = useMemo(() => {
-    if (!selectedCreneau) return [];
-    const dates = [];
-    const joursSemaine = { "LUNDI": 1, "MARDI": 2, "MERCREDI": 3, "JEUDI": 4, "VENDREDI": 5, "SAMEDI": 6, "DIMANCHE": 0 };
-    const cible = joursSemaine[selectedCreneau.jour.toUpperCase()];
+    if (!selectedCreneau || !selectedCreneau.jour) return [];
     
-    let current = new Date(new Date().getFullYear(), 8, 1); // 1er Septembre
-    const fin = new Date(new Date().getFullYear() + 1, 7, 31); // 31 Août
+    const dates = [];
+    const joursSemaineMap = { 
+      "LUNDI": 1, "MARDI": 2, "MERCREDI": 3, "JEUDI": 4, 
+      "VENDREDI": 5, "SAMEDI": 6, "DIMANCHE": 0 
+    };
+    
+    // Nettoyage du nom du jour (enlève accents et espaces)
+    const jourNettoye = selectedCreneau.jour.toUpperCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    
+    const jourCible = joursSemaineMap[jourNettoye];
+    
+    let current = new Date(2025, 8, 1); // Septembre 2025
+    const finSaison = new Date(2026, 7, 31); // Août 2026
 
-    while (current <= fin) {
-      if (current.getDay() === cible) {
+    while (current <= finSaison) {
+      if (current.getDay() === jourCible) {
         dates.push(current.toISOString().split('T')[0]);
       }
       current.setDate(current.getDate() + 1);
@@ -38,14 +46,16 @@ function App() {
     return dates;
   }, [selectedCreneau]);
 
-  // Initialiser la date par défaut (prochain cours ou aujourd'hui)
+  // SÉLECTION AUTOMATIQUE DU PROCHAIN CRÉNEAU
   useEffect(() => {
-    if (datesSaison.length > 0 && !datesSaison.includes(date)) {
-      setDate(datesSaison[0]);
+    if (datesSaison.length > 0) {
+      const aujourdhui = new Date().toISOString().split('T')[0];
+      // On cherche la première date qui est aujourd'hui ou après
+      const prochaineDate = datesSaison.find(d => d >= aujourdhui) || datesSaison[0];
+      setDate(prochaineDate);
     }
-  }, [datesSaison, date]);
+  }, [datesSaison]);
 
-  // 3. Charger les joueurs
   useEffect(() => {
     if (selectedCreneau && date) {
       fetch(`${API}/api/joueurs?creneau=${selectedCreneau.creneau_code}&date=${date}`)
@@ -59,12 +69,6 @@ function App() {
     }
   }, [selectedCreneau, date]);
 
-  const toggleAll = (status) => {
-    const newMap = { ...presences };
-    joueurs.forEach(j => newMap[j.licence] = status);
-    setPresences(newMap);
-  };
-
   const sauvegarder = () => {
     const payload = {
       creneau: selectedCreneau.creneau_code,
@@ -75,22 +79,23 @@ function App() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
-    }).then(() => alert("✅ Enregistré !"));
+    }).then(() => alert("✅ Présences enregistrées !"));
   };
 
   return (
-    <div style={{ padding: '15px', maxWidth: '500px', margin: 'auto', fontFamily: 'system-ui' }}>
+    <div style={{ padding: '15px', maxWidth: '500px', margin: 'auto', fontFamily: 'sans-serif' }}>
       <h2 style={{ textAlign: 'center' }}>🏸 Bad Présences</h2>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
         <label><b>Créneau :</b></label>
         <select 
-          style={{ padding: '12px', borderRadius: '8px', fontSize: '16px' }}
+          style={{ padding: '12px', borderRadius: '8px', fontSize: '15px' }}
+          value={selectedCreneau?.creneau_code || ""}
           onChange={(e) => setSelectedCreneau(creneaux.find(c => c.creneau_code === e.target.value))}
         >
           {creneaux.map(c => (
             <option key={c.creneau_code} value={c.creneau_code}>
-              {c.creneau_code} : {c.jour} ({c.heure_debut}) - {c.entraineur || 'Sans coach'}
+              {c.creneau_code} : {c.jour} ({c.horaire}) - {c.entraineur}
             </option>
           ))}
         </select>
@@ -99,20 +104,24 @@ function App() {
         <select 
           value={date} 
           onChange={(e) => setDate(e.target.value)}
-          style={{ padding: '12px', borderRadius: '8px', fontSize: '16px' }}
+          style={{ padding: '12px', borderRadius: '8px', fontSize: '15px' }}
         >
           {datesSaison.map(d => (
-            <option key={d} value={d}>{new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</option>
+            <option key={d} value={d}>
+              {new Date(d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </option>
           ))}
         </select>
       </div>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-        <button onClick={() => toggleAll(true)} style={{ flex: 1, padding: '10px', backgroundColor: '#e3f2fd', border: '1px solid #2196f3', borderRadius: '5px' }}>Tout Présent</button>
-        <button onClick={() => toggleAll(false)} style={{ flex: 1, padding: '10px', backgroundColor: '#f5f5f5', border: '1px solid #9e9e9e', borderRadius: '5px' }}>Tout Absent</button>
+        <button onClick={() => {
+          const m = {}; joueurs.forEach(j => m[j.licence] = true); setPresences(m);
+        }} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}>Tout Présent</button>
+        <button onClick={() => setPresences({})} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}>Tout Absent</button>
       </div>
 
-      <div style={{ backgroundColor: '#fff', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+      <div style={{ border: '1px solid #eee', borderRadius: '8px', backgroundColor: '#fff' }}>
         {joueurs.map(j => (
           <div 
             key={j.licence} 
@@ -120,19 +129,18 @@ function App() {
             style={{ 
               display: 'flex', justifyContent: 'space-between', padding: '15px', 
               borderBottom: '1px solid #eee', alignItems: 'center',
-              backgroundColor: presences[j.licence] ? '#e8f5e9' : 'white'
+              backgroundColor: presences[j.licence] ? '#e8f5e9' : 'transparent'
             }}
           >
-            <span style={{ fontSize: '16px' }}>{j.nom} {j.prenom}</span>
-            <input type="checkbox" checked={presences[j.licence] || false} readOnly style={{ transform: 'scale(1.5)' }} />
+            <span>{j.nom} {j.prenom}</span>
+            <input type="checkbox" checked={presences[j.licence] || false} readOnly style={{ transform: 'scale(1.2)' }} />
           </div>
         ))}
       </div>
 
       <button onClick={sauvegarder} style={{ 
         width: '100%', marginTop: '20px', padding: '15px', backgroundColor: '#2e7d32', 
-        color: 'white', border: 'none', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold',
-        position: 'sticky', bottom: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.2)'
+        color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px'
       }}>
         💾 ENREGISTRER
       </button>
