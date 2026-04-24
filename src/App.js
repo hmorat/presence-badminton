@@ -3,7 +3,7 @@ import supabase from "./supabase";
 import * as XLSX from "xlsx";
 import "./App.css";
 
-const API = "https://presence-badminton-backend.vercel.app";
+const API = "https://presence-badminton-backend.onrender.com";
 
 function App() {
   const [user, setUser] = useState(null);
