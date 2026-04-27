@@ -11,6 +11,7 @@ function App() {
   const [presences, setPresences] = useState({});
   const [isExporting, setIsExporting] = useState(false);
 
+  // 1. Chargement des créneaux
   useEffect(() => {
     fetch(`${API}/api/creneaux`)
       .then(res => res.json())
@@ -21,6 +22,7 @@ function App() {
       .catch(err => console.error("Erreur API créneaux:", err));
   }, []);
 
+  // 2. Calcul des dates de la saison
   const datesSaison = useMemo(() => {
     if (!selectedCreneau || !selectedCreneau.jour) return [];
     const dates = [];
@@ -36,6 +38,7 @@ function App() {
     return dates;
   }, [selectedCreneau]);
 
+  // 3. Date par défaut
   useEffect(() => {
     if (datesSaison.length > 0) {
       const auj = new Date().toISOString().split('T')[0];
@@ -44,6 +47,7 @@ function App() {
     }
   }, [datesSaison]);
 
+  // 4. Chargement des joueurs
   useEffect(() => {
     if (selectedCreneau && date) {
       fetch(`${API}/api/joueurs?creneau=${selectedCreneau.creneau_code}&date=${date}`)
@@ -57,12 +61,17 @@ function App() {
     }
   }, [selectedCreneau, date]);
 
+  // --- COMPTEUR ---
+  const nbPresents = useMemo(() => {
+    return Object.values(presences).filter(v => v === true).length;
+  }, [presences]);
+
   const exporterToutDepuisBDD = async () => {
     setIsExporting(true);
     try {
       const response = await fetch(`${API}/api/export-global`); 
       const data = await response.json();
-      if (!data || data.length === 0) return alert("Aucune donnée enregistrée.");
+      if (!data || data.length === 0) return alert("Aucune donnée.");
       const formattedData = data.map(row => ({
         "Code Créneau": row.creneau_code,
         "Date Séance": new Date(row.date_seance).toLocaleDateString('fr-FR'),
@@ -75,7 +84,7 @@ function App() {
       XLSX.utils.book_append_sheet(wb, ws, "Historique");
       XLSX.writeFile(wb, "Historique_Presences.xlsx");
     } catch (error) {
-      alert("Erreur lors de l'export.");
+      alert("Erreur export.");
     } finally {
       setIsExporting(false);
     }
@@ -119,13 +128,28 @@ function App() {
           ))}
         </select>
 
-        <button 
-          onClick={exporterToutDepuisBDD} 
-          disabled={isExporting}
-          style={{ marginTop: '10px', backgroundColor: '#007bff', color: 'white', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
-        >
-          {isExporting ? "⏳ Extraction..." : "📥 EXPORTER TOUT L'HISTORIQUE (XLSX)"}
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '5px' }}>
+          <button 
+            onClick={exporterToutDepuisBDD} 
+            disabled={isExporting}
+            style={{ flex: 1, backgroundColor: '#007bff', color: 'white', padding: '10px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
+          >
+            {isExporting ? "..." : "📊 Export"}
+          </button>
+          
+          <div style={{ 
+            flex: 1, 
+            backgroundColor: '#f1f3f4', 
+            padding: '10px', 
+            borderRadius: '8px', 
+            textAlign: 'center', 
+            fontWeight: 'bold', 
+            color: '#333',
+            border: '1px solid #ddd'
+          }}>
+             ✅ {nbPresents} / {joueurs.length}
+          </div>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
