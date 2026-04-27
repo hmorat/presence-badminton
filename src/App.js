@@ -47,27 +47,36 @@ function App() {
     }
   }, [selectedCreneau, date]);
 
-  const exportGlobal = () => {
+  // FONCTION EXPORT ROBUSTE
+  const executerExport = () => {
     fetch(`${API}/api/export-global`)
       .then(res => {
-        if(!res.ok) throw new Error();
+        if (!res.ok) throw new Error("Serveur injoignable");
         return res.json();
       })
       .then(data => {
+        if (!data || data.length === 0) return alert("Aucune donnée enregistrée à exporter.");
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Historique");
         XLSX.writeFile(wb, "Historique_ABAC.xlsx");
       })
-      .catch(() => alert("Erreur lors de l'export"));
+      .catch((err) => {
+        console.error(err);
+        alert("Erreur de connexion au serveur pour l'export.");
+      });
   };
 
   return (
     <div style={{ padding: '15px', maxWidth: '500px', margin: 'auto', fontFamily: 'Arial' }}>
       <h2 style={{ textAlign: 'center' }}>🏸 Présences ABAC</h2>
       
+      {/* GROS BOUTON EXPORT TOUT EN HAUT */}
+      <button onClick={executerExport} style={{ width: '100%', padding: '15px', marginBottom: '20px', backgroundColor: '#f8f9fa', border: '2px solid #ccc', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>
+        📊 TÉLÉCHARGER TOUT L'HISTORIQUE (EXCEL)
+      </button>
+
       <div style={{ padding: '15px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '20px', backgroundColor: '#fff' }}>
-        {/* SELECT AVEC ENTRAINEUR */}
         <select style={{ width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px' }} 
                 value={selectedCreneau?.creneau_code || ""}
                 onChange={(e) => {setSelectedCreneau(creneaux.find(c => c.creneau_code === e.target.value)); setDate("");}}>
@@ -88,13 +97,8 @@ function App() {
                 </option>
               ))}
             </select>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f3f4', padding: '10px', borderRadius: '8px' }}>
-              <strong>✅ {Object.values(presences).filter(v => v).length} / {joueurs.length}</strong>
-              <div style={{ display: 'flex', gap: '5px' }}>
-                <button onClick={exportGlobal} style={{ padding: '8px 12px', borderRadius: '5px', border: '1px solid #ccc', cursor: 'pointer' }}>📊 Export</button>
-                <button style={{ padding: '8px 12px', borderRadius: '5px', backgroundColor: '#0078d4', color: 'white', border: 'none' }}>📧 Mail</button>
-              </div>
+            <div style={{ textAlign: 'center', padding: '10px', fontWeight: 'bold', backgroundColor: '#f1f3f4', borderRadius: '5px' }}>
+               {Object.values(presences).filter(v => v).length} / {joueurs.length} présents
             </div>
           </>
         )}
@@ -102,7 +106,6 @@ function App() {
 
       {selectedCreneau && (
         <>
-          {/* BOUTONS TOUS PRÉSENTS / ABSENTS */}
           <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
             <button onClick={() => {const m={}; joueurs.forEach(j=>m[j.licence]=true); setPresences(m)}} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #2196F3', backgroundColor: 'white', cursor: 'pointer' }}>Tous Présents</button>
             <button onClick={() => setPresences({})} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc', backgroundColor: 'white', cursor: 'pointer' }}>Tous Absents</button>
@@ -115,7 +118,7 @@ function App() {
                 <span>{j.nom} {j.prenom}</span>
                 <input type="checkbox" checked={presences[j.licence] || false} readOnly style={{ transform: 'scale(1.3)' }} />
               </div>
-            )) : <p style={{textAlign:'center', padding:'30px', color:'red'}}>Aucun joueur trouvé.</p>}
+            )) : <p style={{textAlign:'center', padding:'30px', color:'red'}}>Chargement...</p>}
           </div>
           
           <button onClick={() => {
@@ -123,7 +126,7 @@ function App() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ creneau: selectedCreneau.creneau_code, date, joueurs: joueurs.map(j => ({ licence: j.licence, present: presences[j.licence] || false })) })
-            }).then(() => alert("💾 Enregistré !"));
+            }).then(() => alert("✅ Sauvegardé !"));
           }} style={{ width: '100%', padding: '18px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '18px', cursor: 'pointer' }}>
             💾 ENREGISTRER
           </button>
