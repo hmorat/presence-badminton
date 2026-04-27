@@ -48,17 +48,20 @@ function App() {
   }, [selectedCreneau, date]);
 
   const exportGlobal = () => {
-    fetch(`${API}/api/export-global`)
-      .then(res => res.json())
-      .then(data => {
-        if (!data || data.length === 0) return alert("Rien à exporter.");
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Historique");
-        XLSX.writeFile(wb, "Historique_ABAC.xlsx");
-      })
-      .catch(() => alert("Erreur de connexion : vérifiez la Start Command sur Render."));
-  };
+  // L'URL doit pointer vers /api/export car le fichier est dans le dossier routes
+  fetch(`${API}/api/export`) 
+    .then(res => {
+      if(!res.ok) throw new Error();
+      return res.json();
+    })
+    .then(data => {
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Historique");
+      XLSX.writeFile(wb, "Historique_ABAC.xlsx");
+    })
+    .catch(() => alert("Erreur lors de l'export"));
+};
 
   return (
     <div style={{ padding: '15px', maxWidth: '500px', margin: 'auto', fontFamily: 'Arial' }}>
