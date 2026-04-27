@@ -53,11 +53,14 @@ function App() {
       .then(res => res.json())
       .then(data => {
         if (!data || data.length === 0) return alert("Aucune donnée à exporter.");
+        
+        // Le formatage en colonnes se fait tout seul grâce aux noms donnés dans le SQL (AS "Créneau", etc.)
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Historique");
         XLSX.writeFile(wb, "Historique_Presences_ABAC.xlsx");
-      });
+      })
+      .catch(err => alert("Erreur lors de l'export"));
   };
 
   const sauvegarder = () => {
