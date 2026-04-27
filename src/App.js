@@ -96,11 +96,24 @@ function App() {
       date,
       joueurs: joueurs.map(j => ({ licence: j.licence, present: presences[j.licence] || false }))
     };
+    
     fetch(`${API}/api/presences`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
-    }).then(() => alert("✅ Enregistré !"));
+    })
+    .then(() => {
+      alert("✅ Présences enregistrées !");
+      
+      // REDIRECTION : On sélectionne le premier créneau de la liste
+      if (creneaux.length > 0) {
+        setSelectedCreneau(creneaux[0]);
+      }
+      
+      // Optionnel : remonter en haut de page pour le confort sur mobile
+      window.scrollTo(0, 0);
+    })
+    .catch(err => alert("Erreur lors de l'enregistrement"));
   };
 
   return (
