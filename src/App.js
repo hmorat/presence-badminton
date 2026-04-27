@@ -91,7 +91,7 @@ function App() {
         >
           <option value="">-- Sélectionner --</option>
           {creneaux.map(c => (
-            <option key={c.creneau_code} value={c.creneau_code}>{c.creneau_code} : {c.jour} ({c.horaire})</option>
+            <option key={c.creneau_code} value={c.creneau_code}>{c.creneau_code} : {c.jour} ({c.horaire}) - {c.entraineur}</option>
           ))}
         </select>
 
