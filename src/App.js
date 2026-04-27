@@ -46,12 +46,11 @@ function App() {
     }
   }, [selectedCreneau, date]);
 
-  const envoyerMail = () => {
-    fetch(`${API}/api/send-email`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ creneau: selectedCreneau.creneau_code, ...mail })
-    }).then(res => res.ok ? alert("✉️ Mail envoyé !") : alert("❌ Erreur"));
+  const exportExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(joueurs.map(j => ({ Nom: j.nom, Prénom: j.prenom, Présent: presences[j.licence] ? "OUI" : "NON" })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Présences");
+    XLSX.writeFile(wb, `Export_${selectedCreneau.creneau_code}.xlsx`);
   };
 
   return (
@@ -59,42 +58,46 @@ function App() {
       <h2 style={{ textAlign: 'center' }}>🏸 Présences ABAC</h2>
       
       <div style={{ padding: '15px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-        <select style={{ width: '100%', padding: '12px', marginBottom: '10px' }} onChange={(e) => {setSelectedCreneau(creneaux.find(c => c.creneau_code === e.target.value)); setDate("");}}>
-          <option value="">-- Créneau --</option>
+        <select style={{ width: '100%', padding: '12px', marginBottom: '10px' }} 
+                value={selectedCreneau?.creneau_code || ""}
+                onChange={(e) => {setSelectedCreneau(creneaux.find(c => c.creneau_code === e.target.value)); setDate("");}}>
+          <option value="">-- Choisir Créneau --</option>
           {creneaux.map(c => <option key={c.creneau_code} value={c.creneau_code}>{c.creneau_code} : {c.jour} ({c.horaire}) - {c.entraineur}</option>)}
         </select>
 
         {selectedCreneau && (
-          <select style={{ width: '100%', padding: '12px', marginBottom: '10px' }} value={date} onChange={(e) => setDate(e.target.value)}>
-            {datesSaison.map(d => <option key={d} value={d}>{new Date(d + "T12:00:00").toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</option>)}
-          </select>
-        )}
-
-        {selectedCreneau && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong>✅ {Object.values(presences).filter(v => v).length} / {joueurs.length}</strong>
-            <button onClick={() => setShowMail(!showMail)} style={{ padding: '8px', backgroundColor: '#0078d4', color: 'white', border: 'none', borderRadius: '5px' }}>📧 Mail</button>
-          </div>
+          <>
+            <select style={{ width: '100%', padding: '12px', marginBottom: '10px' }} value={date} onChange={(e) => setDate(e.target.value)}>
+              {datesSaison.map(d => <option key={d} value={d}>{new Date(d + "T12:00:00").toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</option>)}
+            </select>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f3f4', padding: '10px', borderRadius: '8px' }}>
+              <strong>✅ {Object.values(presences).filter(v => v).length} / {joueurs.length}</strong>
+              <div style={{ display: 'flex', gap: '5px' }}>
+                <button onClick={exportExcel} style={{ padding: '5px' }}>📊 Export</button>
+                <button onClick={() => setShowMail(!showMail)} style={{ padding: '5px', backgroundColor: '#0078d4', color: 'white', border: 'none', borderRadius: '3px' }}>📧 Mail</button>
+              </div>
+            </div>
+          </>
         )}
       </div>
 
-      {showMail && (
+      {showMail && selectedCreneau && (
         <div style={{ padding: '15px', border: '1px solid #0078d4', borderRadius: '10px', marginBottom: '20px' }}>
-          <input placeholder="Objet" style={{ width: '100%', marginBottom: '10px', padding: '8px' }} onChange={e => setMail({...mail, objet: e.target.value})} />
-          <textarea placeholder="Message" style={{ width: '100%', height: '80px', marginBottom: '10px', padding: '8px' }} onChange={e => setMail({...mail, message: e.target.value})} />
-          <button onClick={envoyerMail} style={{ width: '100%', padding: '10px', backgroundColor: '#0078d4', color: 'white', border: 'none', borderRadius: '5px' }}>Envoyer aux joueurs</button>
+          <input placeholder="Objet" style={{ width: '100%', marginBottom: '10px' }} onChange={e => setMail({...mail, objet: e.target.value})} />
+          <textarea placeholder="Message" style={{ width: '100%', height: '60px', marginBottom: '10px' }} onChange={e => setMail({...mail, message: e.target.value})} />
+          <button onClick={() => fetch(`${API}/api/send-email`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({creneau:selectedCreneau.creneau_code, ...mail})}).then(()=>alert("Envoyé"))} style={{ width: '100%', padding: '10px', backgroundColor: '#0078d4', color: 'white', border: 'none' }}>Envoyer</button>
         </div>
       )}
 
       {selectedCreneau && (
         <>
           <div style={{ border: '1px solid #eee', borderRadius: '10px', marginBottom: '20px' }}>
-            {joueurs.map(j => (
+            {joueurs.length > 0 ? joueurs.map(j => (
               <div key={j.licence} onClick={() => setPresences({...presences, [j.licence]: !presences[j.licence]})} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: '1px solid #eee', backgroundColor: presences[j.licence] ? '#e8f5e9' : 'white', cursor: 'pointer' }}>
                 <span>{j.nom} {j.prenom}</span>
                 <input type="checkbox" checked={presences[j.licence] || false} readOnly />
               </div>
-            ))}
+            )) : <p style={{textAlign:'center', padding:'20px', color:'red'}}>Aucun joueur trouvé</p>}
           </div>
           <button onClick={() => {
             fetch(`${API}/api/presences`, {
