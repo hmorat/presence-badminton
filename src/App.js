@@ -5,7 +5,7 @@ const API = "https://presence-badminton-backend.onrender.com";
 
 function App() {
   const [creneaux, setCreneaux] = useState([]);
-  const [selectedCreneau, setSelectedCreneau] = useState(null);
+  const [selectedCreneau, setSelectedCreneau] = useState(null); // Initialisé à null
   const [date, setDate] = useState("");
   const [joueurs, setJoueurs] = useState([]);
   const [presences, setPresences] = useState({});
@@ -15,10 +15,7 @@ function App() {
   useEffect(() => {
     fetch(`${API}/api/creneaux`)
       .then(res => res.json())
-      .then(data => {
-        setCreneaux(data);
-        if (data.length > 0) setSelectedCreneau(data[0]);
-      })
+      .then(data => setCreneaux(data))
       .catch(err => console.error("Erreur API créneaux:", err));
   }, []);
 
@@ -38,7 +35,7 @@ function App() {
     return dates;
   }, [selectedCreneau]);
 
-  // 3. Date par défaut
+  // 3. Date par défaut (prochaine séance)
   useEffect(() => {
     if (datesSaison.length > 0) {
       const auj = new Date().toISOString().split('T')[0];
@@ -47,7 +44,7 @@ function App() {
     }
   }, [datesSaison]);
 
-  // 4. Chargement des joueurs
+  // 4. Chargement des joueurs uniquement si un créneau est choisi
   useEffect(() => {
     if (selectedCreneau && date) {
       fetch(`${API}/api/joueurs?creneau=${selectedCreneau.creneau_code}&date=${date}`)
@@ -58,13 +55,12 @@ function App() {
           data.forEach(j => map[j.licence] = j.present);
           setPresences(map);
         });
+    } else {
+      setJoueurs([]); // Vide la liste si aucun créneau
     }
   }, [selectedCreneau, date]);
 
-  // --- COMPTEUR ---
-  const nbPresents = useMemo(() => {
-    return Object.values(presences).filter(v => v === true).length;
-  }, [presences]);
+  const nbPresents = useMemo(() => Object.values(presences).filter(v => v === true).length, [presences]);
 
   const exporterToutDepuisBDD = async () => {
     setIsExporting(true);
@@ -83,11 +79,8 @@ function App() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Historique");
       XLSX.writeFile(wb, "Historique_Presences.xlsx");
-    } catch (error) {
-      alert("Erreur export.");
-    } finally {
-      setIsExporting(false);
-    }
+    } catch (error) { alert("Erreur export."); } 
+    finally { setIsExporting(false); }
   };
 
   const sauvegarder = () => {
@@ -96,24 +89,15 @@ function App() {
       date,
       joueurs: joueurs.map(j => ({ licence: j.licence, present: presences[j.licence] || false }))
     };
-    
     fetch(`${API}/api/presences`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
-    })
-    .then(() => {
-      alert("✅ Présences enregistrées !");
-      
-      // REDIRECTION : On sélectionne le premier créneau de la liste
-      if (creneaux.length > 0) {
-        setSelectedCreneau(creneaux[0]);
-      }
-      
-      // Optionnel : remonter en haut de page pour le confort sur mobile
-      window.scrollTo(0, 0);
-    })
-    .catch(err => alert("Erreur lors de l'enregistrement"));
+    }).then(() => {
+      alert("✅ Enregistré !");
+      setSelectedCreneau(null); // RETOUR À L'ACCUEIL (VIDE)
+      setDate("");
+    });
   };
 
   return (
@@ -121,12 +105,13 @@ function App() {
       <h2 style={{ textAlign: 'center' }}>🏸 Bad Présences</h2>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', backgroundColor: '#fff', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-        <label><b>Créneau :</b></label>
+        <label><b>Choisir un créneau :</b></label>
         <select 
           style={{ padding: '12px', borderRadius: '8px', fontSize: '15px' }}
           value={selectedCreneau?.creneau_code || ""}
-          onChange={(e) => setSelectedCreneau(creneaux.find(c => c.creneau_code === e.target.value))}
+          onChange={(e) => setSelectedCreneau(creneaux.find(c => c.creneau_code === e.target.value) || null)}
         >
+          <option value="">-- Sélectionner un créneau --</option>
           {creneaux.map(c => (
             <option key={c.creneau_code} value={c.creneau_code}>
               {c.creneau_code} : {c.jour} ({c.horaire}) - {c.entraineur || "Sans coach"}
@@ -134,54 +119,53 @@ function App() {
           ))}
         </select>
 
-        <label><b>Séance :</b></label>
-        <select value={date} onChange={(e) => setDate(e.target.value)} style={{ padding: '12px', borderRadius: '8px', fontSize: '15px' }}>
-          {datesSaison.map(d => (
-            <option key={d} value={d}>{new Date(d + "T12:00:00").toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</option>
-          ))}
-        </select>
+        {selectedCreneau && (
+          <>
+            <label><b>Séance :</b></label>
+            <select value={date} onChange={(e) => setDate(e.target.value)} style={{ padding: '12px', borderRadius: '8px', fontSize: '15px' }}>
+              {datesSaison.map(d => (
+                <option key={d} value={d}>{new Date(d + "T12:00:00").toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</option>
+              ))}
+            </select>
+          </>
+        )}
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '5px' }}>
-          <button 
-            onClick={exporterToutDepuisBDD} 
-            disabled={isExporting}
-            style={{ flex: 1, backgroundColor: '#007bff', color: 'white', padding: '10px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
-          >
+          <button onClick={exporterToutDepuisBDD} disabled={isExporting} style={{ flex: 1, backgroundColor: '#007bff', color: 'white', padding: '10px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>
             {isExporting ? "..." : "📊 Export"}
           </button>
           
-          <div style={{ 
-            flex: 1, 
-            backgroundColor: '#f1f3f4', 
-            padding: '10px', 
-            borderRadius: '8px', 
-            textAlign: 'center', 
-            fontWeight: 'bold', 
-            color: '#333',
-            border: '1px solid #ddd'
-          }}>
+          <div style={{ flex: 1, backgroundColor: '#f1f3f4', padding: '10px', borderRadius: '8px', textAlign: 'center', fontWeight: 'bold', color: '#333', border: '1px solid #ddd' }}>
              ✅ {nbPresents} / {joueurs.length}
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-        <button onClick={() => {const m={}; joueurs.forEach(j=>m[j.licence]=true); setPresences(m)}} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #2196F3', backgroundColor: '#E3F2FD' }}>Tout Présent</button>
-        <button onClick={() => setPresences({})} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc', backgroundColor: '#fff' }}>Tout Absent</button>
-      </div>
-
-      <div style={{ border: '1px solid #eee', borderRadius: '10px', backgroundColor: '#fff', overflow: 'hidden' }}>
-        {joueurs.map(j => (
-          <div key={j.licence} onClick={() => setPresences(p => ({ ...p, [j.licence]: !p[j.licence] }))} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: '1px solid #eee', alignItems: 'center', backgroundColor: presences[j.licence] ? '#e8f5e9' : 'transparent' }}>
-            <span>{j.nom} {j.prenom}</span>
-            <input type="checkbox" checked={presences[j.licence] || false} readOnly style={{ transform: 'scale(1.3)' }} />
+      {selectedCreneau ? (
+        <>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+            <button onClick={() => {const m={}; joueurs.forEach(j=>m[j.licence]=true); setPresences(m)}} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #2196F3', backgroundColor: '#E3F2FD' }}>Tout Présent</button>
+            <button onClick={() => setPresences({})} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc', backgroundColor: '#fff' }}>Tout Absent</button>
           </div>
-        ))}
-      </div>
 
-      <button onClick={sauvegarder} style={{ width: '100%', marginTop: '20px', padding: '16px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '17px', cursor: 'pointer' }}>
-        💾 ENREGISTRER
-      </button>
+          <div style={{ border: '1px solid #eee', borderRadius: '10px', backgroundColor: '#fff', overflow: 'hidden' }}>
+            {joueurs.map(j => (
+              <div key={j.licence} onClick={() => setPresences(p => ({ ...p, [j.licence]: !p[j.licence] }))} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: '1px solid #eee', alignItems: 'center', backgroundColor: presences[j.licence] ? '#e8f5e9' : 'transparent' }}>
+                <span>{j.nom} {j.prenom}</span>
+                <input type="checkbox" checked={presences[j.licence] || false} readOnly style={{ transform: 'scale(1.3)' }} />
+              </div>
+            ))}
+          </div>
+
+          <button onClick={sauvegarder} style={{ width: '100%', marginTop: '20px', padding: '16px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '17px', cursor: 'pointer' }}>
+            💾 ENREGISTRER
+          </button>
+        </>
+      ) : (
+        <div style={{ textAlign: 'center', marginTop: '50px', color: '#888', fontStyle: 'italic' }}>
+          Veuillez sélectionner un créneau pour afficher les joueurs.
+        </div>
+      )}
     </div>
   );
 }
