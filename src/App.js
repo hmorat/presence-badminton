@@ -47,35 +47,23 @@ function App() {
     }
   }, [selectedCreneau, date]);
 
-  // FONCTION EXPORT ROBUSTE
-  const executerExport = () => {
+  const exportGlobal = () => {
     fetch(`${API}/api/export-global`)
-      .then(res => {
-        if (!res.ok) throw new Error("Serveur injoignable");
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
-        if (!data || data.length === 0) return alert("Aucune donnée enregistrée à exporter.");
+        if (!data || data.length === 0) return alert("Rien à exporter.");
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Historique");
         XLSX.writeFile(wb, "Historique_ABAC.xlsx");
       })
-      .catch((err) => {
-        console.error(err);
-        alert("Erreur de connexion au serveur pour l'export.");
-      });
+      .catch(() => alert("Erreur de connexion : vérifiez la Start Command sur Render."));
   };
 
   return (
     <div style={{ padding: '15px', maxWidth: '500px', margin: 'auto', fontFamily: 'Arial' }}>
       <h2 style={{ textAlign: 'center' }}>🏸 Présences ABAC</h2>
       
-      {/* GROS BOUTON EXPORT TOUT EN HAUT */}
-      <button onClick={executerExport} style={{ width: '100%', padding: '15px', marginBottom: '20px', backgroundColor: '#f8f9fa', border: '2px solid #ccc', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>
-        📊 TÉLÉCHARGER TOUT L'HISTORIQUE (EXCEL)
-      </button>
-
       <div style={{ padding: '15px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '20px', backgroundColor: '#fff' }}>
         <select style={{ width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px' }} 
                 value={selectedCreneau?.creneau_code || ""}
@@ -97,8 +85,13 @@ function App() {
                 </option>
               ))}
             </select>
-            <div style={{ textAlign: 'center', padding: '10px', fontWeight: 'bold', backgroundColor: '#f1f3f4', borderRadius: '5px' }}>
-               {Object.values(presences).filter(v => v).length} / {joueurs.length} présents
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f3f4', padding: '10px', borderRadius: '8px' }}>
+              <strong>✅ {Object.values(presences).filter(v => v).length} / {joueurs.length}</strong>
+              <div style={{ display: 'flex', gap: '5px' }}>
+                <button onClick={exportGlobal} style={{ padding: '8px 12px', borderRadius: '5px', border: '1px solid #ccc', cursor: 'pointer' }}>📊 Export</button>
+                <button style={{ padding: '8px 12px', borderRadius: '5px', backgroundColor: '#0078d4', color: 'white', border: 'none' }}>📧 Mail</button>
+              </div>
             </div>
           </>
         )}
@@ -111,14 +104,14 @@ function App() {
             <button onClick={() => setPresences({})} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc', backgroundColor: 'white', cursor: 'pointer' }}>Tous Absents</button>
           </div>
 
-          <div style={{ border: '1px solid #eee', borderRadius: '10px', marginBottom: '20px', backgroundColor: 'white' }}>
+          <div style={{ border: '1px solid #eee', borderRadius: '10px', marginBottom: '20px', backgroundColor: 'white', minHeight: '100px' }}>
             {joueurs.length > 0 ? joueurs.map(j => (
               <div key={j.licence} onClick={() => setPresences({...presences, [j.licence]: !presences[j.licence]})} 
                    style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: '1px solid #eee', backgroundColor: presences[j.licence] ? '#e8f5e9' : 'transparent', cursor: 'pointer' }}>
                 <span>{j.nom} {j.prenom}</span>
                 <input type="checkbox" checked={presences[j.licence] || false} readOnly style={{ transform: 'scale(1.3)' }} />
               </div>
-            )) : <p style={{textAlign:'center', padding:'30px', color:'red'}}>Chargement...</p>}
+            )) : <p style={{textAlign:'center', padding:'30px', color:'red'}}>Aucun joueur trouvé</p>}
           </div>
           
           <button onClick={() => {
