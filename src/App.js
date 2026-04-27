@@ -20,7 +20,6 @@ function App() {
     const joursMap = { "LUNDI": 1, "MARDI": 2, "MERCREDI": 3, "JEUDI": 4, "VENDREDI": 5, "SAMEDI": 6, "DIMANCHE": 0 };
     const jourStr = (selectedCreneau.jour || selectedCreneau.Jour || "").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     const cible = joursMap[jourStr];
-    
     let d = new Date(2025, 8, 1, 12, 0, 0);
     while (d <= new Date(2026, 7, 31)) {
       if (d.getDay() === cible) dates.push(d.toISOString().split('T')[0]);
@@ -52,27 +51,13 @@ function App() {
     fetch(`${API}/api/export-global`)
       .then(res => res.json())
       .then(data => {
-        if (!data || data.length === 0) return alert("Aucune donnée à exporter.");
-        
-        // Le formatage en colonnes se fait tout seul grâce aux noms donnés dans le SQL (AS "Créneau", etc.)
+        if (!data || data.length === 0) return alert("Aucune donnée.");
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Historique");
-        XLSX.writeFile(wb, "Historique_Presences_ABAC.xlsx");
+        XLSX.writeFile(wb, "Historique_ABAC.xlsx");
       })
-      .catch(err => alert("Erreur lors de l'export"));
-  };
-
-  const sauvegarder = () => {
-    fetch(`${API}/api/presences`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        creneau: selectedCreneau.creneau_code, 
-        date, 
-        joueurs: joueurs.map(j => ({ licence: j.licence, present: presences[j.licence] || false })) 
-      })
-    }).then(() => alert("✅ Sauvegardé avec succès !"));
+      .catch(() => alert("Erreur lors de l'export"));
   };
 
   return (
@@ -80,7 +65,7 @@ function App() {
       <h2 style={{ textAlign: 'center' }}>🏸 Présences ABAC</h2>
       
       <button onClick={exportGlobal} style={{ width: '100%', padding: '15px', marginBottom: '20px', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-        📊 EXPORTER TOUTES LES PRÉSENCES (EXCEL)
+        📊 EXPORTER TOUTES LES PRÉSENCES
       </button>
 
       <div style={{ padding: '15px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '20px', backgroundColor: '#fff' }}>
@@ -88,7 +73,11 @@ function App() {
                 value={selectedCreneau?.creneau_code || ""}
                 onChange={(e) => {setSelectedCreneau(creneaux.find(c => c.creneau_code === e.target.value)); setDate("");}}>
           <option value="">-- Choisir un créneau --</option>
-          {creneaux.map(c => <option key={c.creneau_code} value={c.creneau_code}>{c.creneau_code} : {c.jour} ({c.horaire})</option>)}
+          {creneaux.map(c => (
+            <option key={c.creneau_code} value={c.creneau_code}>
+              {c.creneau_code} : {c.jour} ({c.horaire}) - {c.entraineur || c.Entraineur}
+            </option>
+          ))}
         </select>
 
         {selectedCreneau && (
@@ -109,6 +98,11 @@ function App() {
 
       {selectedCreneau && (
         <>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+            <button onClick={() => {const m={}; joueurs.forEach(j=>m[j.licence]=true); setPresences(m)}} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #2196F3', backgroundColor: 'white', cursor: 'pointer' }}>Tous Présents</button>
+            <button onClick={() => setPresences({})} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc', backgroundColor: 'white', cursor: 'pointer' }}>Tous Absents</button>
+          </div>
+
           <div style={{ border: '1px solid #eee', borderRadius: '10px', marginBottom: '20px', backgroundColor: 'white' }}>
             {joueurs.length > 0 ? joueurs.map(j => (
               <div key={j.licence} onClick={() => setPresences({...presences, [j.licence]: !presences[j.licence]})} 
@@ -116,9 +110,16 @@ function App() {
                 <span>{j.nom} {j.prenom}</span>
                 <input type="checkbox" checked={presences[j.licence] || false} readOnly style={{ transform: 'scale(1.3)' }} />
               </div>
-            )) : <p style={{textAlign:'center', padding:'30px', color:'red'}}>⚠️ Aucun joueur trouvé pour ce créneau.</p>}
+            )) : <p style={{textAlign:'center', padding:'30px', color:'red'}}>Chargement des joueurs...</p>}
           </div>
-          <button onClick={sauvegarder} style={{ width: '100%', padding: '18px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '18px', cursor: 'pointer' }}>
+          
+          <button onClick={() => {
+            fetch(`${API}/api/presences`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ creneau: selectedCreneau.creneau_code, date, joueurs: joueurs.map(j => ({ licence: j.licence, present: presences[j.licence] || false })) })
+            }).then(() => alert("✅ Enregistré !"));
+          }} style={{ width: '100%', padding: '18px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '18px', cursor: 'pointer' }}>
             💾 ENREGISTRER
           </button>
         </>
