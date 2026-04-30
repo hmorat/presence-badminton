@@ -60,9 +60,27 @@ function App() {
       body: JSON.stringify({
         creneau: selectedCreneau.creneau_code,
         date,
-        joueurs: joueurs.map(j => ({ licence: j.licence, present: presences[j.licence] || false }))
+        joueurs: joueurs.map(j => ({ 
+          licence: j.licence, 
+          present: presences[j.licence] || false 
+        }))
       })
-    }).then(() => alert("✅ Enregistré avec succès !"));
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Erreur serveur");
+      return res.json();
+    })
+    .then(() => {
+      alert("✅ Enregistré avec succès !");
+      
+      // Réinitialisation de l'interface
+      setSelectedCreneau(null); 
+      setDate("");
+    })
+    .catch((err) => {
+      console.error(err);
+      alert("❌ Erreur lors de l'enregistrement");
+    });
   };
 
   const exportExcel = () => {
