@@ -66,12 +66,17 @@ function App() {
   };
 
   const exportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(joueurs.map(j => ({
-      Nom: j.nom, Prénom: j.prenom, Présence: presences[j.licence] ? "PRÉSENT" : "ABSENT"
-    })));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Présences");
-    XLSX.writeFile(wb, `ABAC_${selectedCreneau.creneau_code}_${date}.xlsx`);
+    fetch(`${API}/api/export-global`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.length === 0) return alert("Aucune donnée à exporter.");
+        
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Historique_Presences");
+        XLSX.writeFile(wb, "Historique_ABAC.xlsx");
+      })
+      .catch(() => alert("Erreur lors de l'export global"));
   };
 
   return (
