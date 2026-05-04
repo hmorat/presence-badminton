@@ -20,7 +20,6 @@ function App() {
     const joursMap = { "LUNDI": 1, "MARDI": 2, "MERCREDI": 3, "JEUDI": 4, "VENDREDI": 5, "SAMEDI": 6, "DIMANCHE": 0 };
     const jourNettoye = selectedCreneau.jour?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     const cible = joursMap[jourNettoye];
-    
     let d = new Date(2025, 8, 1, 12, 0, 0);
     while (d <= new Date(2026, 7, 31)) {
       if (d.getDay() === cible) dates.push(d.toISOString().split('T')[0]);
@@ -36,48 +35,44 @@ function App() {
     }
   }, [datesSaison, date]);
 
-  // CHARGEMENT DES JOUEURS (Version corrigée)
   useEffect(() => {
     if (selectedCreneau && date) {
-      console.log("Chargement pour :", selectedCreneau.creneau_code, date);
       fetch(`${API}/api/joueurs?creneau=${selectedCreneau.creneau_code}&date=${date}`)
         .then(res => res.json())
         .then(data => {
-          if (Array.isArray(data)) {
+          if (data && Array.isArray(data)) {
             setJoueurs(data);
             const map = {};
             data.forEach(j => {
-              // On s'assure de récupérer la présence même si c'est null/undefined
-              map[j.licence] = j.present || "ABSENT";
+              // Sécurité : transforme les anciens true/false en texte pour le menu déroulant
+              if (j.present === true || j.present === "true") map[j.licence] = "PRÉSENT";
+              else if (j.present === false || j.present === "false" || !j.present) map[j.licence] = "ABSENT";
+              else map[j.licence] = j.present; // Garde "EXCUSÉ" si c'est déjà ça
             });
             setPresences(map);
           }
         })
-        .catch(err => console.error("Erreur fetch joueurs:", err));
-    } else {
-      setJoueurs([]); // On vide si rien n'est sélectionné
+        .catch(err => console.error("Erreur chargement joueurs:", err));
     }
   }, [selectedCreneau, date]);
 
-  const toggleAll = (val) => {
-    const map = { ...presences };
-    joueurs.forEach(j => map[j.licence] = val);
+  const toggleAll = (status) => {
+    const map = {};
+    joueurs.forEach(j => map[j.licence] = status);
     setPresences(map);
   };
 
   const sauvegarder = () => {
-    const listeEnvoi = joueurs.map(j => ({ 
-      licence: j.licence, 
-      present: presences[j.licence] || "ABSENT" 
-    }));
-
     fetch(`${API}/api/presences`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         creneau: selectedCreneau.creneau_code,
         date,
-        joueurs: listeEnvoi
+        joueurs: joueurs.map(j => ({ 
+          licence: j.licence, 
+          present: presences[j.licence] || "ABSENT" 
+        }))
       })
     })
     .then(res => {
@@ -90,23 +85,18 @@ function App() {
       setDate("");
       setJoueurs([]);
     })
-    .catch((err) => {
-      console.error(err);
-      alert("❌ Erreur lors de l'enregistrement");
-    });
+    .catch(() => alert("❌ Erreur lors de l'enregistrement"));
   };
 
   const exportExcel = () => {
     fetch(`${API}/api/export-global`)
       .then(res => res.json())
       .then(data => {
-        if (!data || data.length === 0) return alert("Aucune donnée à exporter.");
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Historique_Presences");
+        XLSX.utils.book_append_sheet(wb, ws, "Presences");
         XLSX.writeFile(wb, "Historique_ABAC.xlsx");
-      })
-      .catch(() => alert("Erreur lors de l'export global"));
+      });
   };
 
   return (
@@ -117,16 +107,15 @@ function App() {
         <select 
           style={{ width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px' }}
           value={selectedCreneau?.creneau_code || ""}
-          onChange={(e) => { 
-            const found = creneaux.find(c => c.creneau_code === e.target.value);
-            setSelectedCreneau(found || null);
-            setDate(""); 
+          onChange={(e) => {
+            const c = creneaux.find(x => x.creneau_code === e.target.value);
+            setSelectedCreneau(c);
           }}
         >
           <option value="">-- Choisir un créneau --</option>
           {creneaux.map(c => (
             <option key={c.creneau_code} value={c.creneau_code}>
-              {c.creneau_code} : {c.jour} ({c.horaire})
+              {c.creneau_code} : {c.jour} ({c.horaire}) - {c.entraineur}
             </option>
           ))}
         </select>
@@ -155,12 +144,12 @@ function App() {
       {selectedCreneau && (
         <>
           <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-            <button onClick={() => toggleAll("PRÉSENT")} style={{ flex: 1, padding: '10px', borderRadius: '5px', backgroundColor: 'white', border: '1px solid #2e7d32' }}>Tous Présents</button>
+            <button onClick={() => toggleAll("PRÉSENT")} style={{ flex: 1, padding: '10px', borderRadius: '5px', backgroundColor: '#e8f5e9', border: '1px solid #2e7d32' }}>Tous Présents</button>
             <button onClick={() => toggleAll("ABSENT")} style={{ flex: 1, padding: '10px', borderRadius: '5px', backgroundColor: 'white', border: '1px solid #ccc' }}>Tous Absents</button>
           </div>
 
-          <div style={{ border: '1px solid #eee', borderRadius: '10px', overflow: 'hidden', marginBottom: '20px' }}>
-            {joueurs.length > 0 ? joueurs.map(j => (
+          <div style={{ border: '1px solid #eee', borderRadius: '10px', marginBottom: '20px' }}>
+            {joueurs.map(j => (
               <div key={j.licence} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderBottom: '1px solid #eee', alignItems: 'center' }}>
                 <span style={{ fontSize: '14px' }}>{j.nom} {j.prenom}</span>
                 <select 
@@ -177,7 +166,7 @@ function App() {
                   <option value="EXCUSÉ">✉️ Excusé</option>
                 </select>
               </div>
-            )) : <p style={{ textAlign: 'center', padding: '20px' }}>Chargement ou aucun joueur...</p>}
+            ))}
           </div>
 
           <button onClick={sauvegarder} style={{ width: '100%', padding: '15px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>
