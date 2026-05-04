@@ -41,7 +41,8 @@ function App() {
         .then(data => {
           setJoueurs(data);
           const map = {};
-          data.forEach(j => map[j.licence] = j.present);
+          // On stocke maintenant la valeur texte (PRÉSENT, ABSENT, EXCUSÉ)
+          data.forEach(j => map[j.licence] = j.present || "ABSENT");
           setPresences(map);
         });
     }
@@ -62,7 +63,7 @@ function App() {
         date,
         joueurs: joueurs.map(j => ({ 
           licence: j.licence, 
-          present: presences[j.licence] || false 
+          present: presences[j.licence] || "ABSENT" 
         }))
       })
     })
@@ -72,8 +73,6 @@ function App() {
     })
     .then(() => {
       alert("✅ Enregistré avec succès !");
-      
-      // Réinitialisation de l'interface
       setSelectedCreneau(null); 
       setDate("");
     })
@@ -88,7 +87,6 @@ function App() {
       .then(res => res.json())
       .then(data => {
         if (data.length === 0) return alert("Aucune donnée à exporter.");
-        
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Historique_Presences");
@@ -104,6 +102,7 @@ function App() {
       <div style={{ marginBottom: '20px', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
         <select 
           style={{ width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px' }}
+          value={selectedCreneau?.creneau_code || ""}
           onChange={(e) => { setSelectedCreneau(creneaux.find(c => c.creneau_code === e.target.value)); setDate(""); }}
         >
           <option value="">-- Choisir un créneau --</option>
@@ -129,7 +128,7 @@ function App() {
 
         {selectedCreneau && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f0f0f0', padding: '10px', borderRadius: '8px' }}>
-            <strong>✅ {Object.values(presences).filter(v => v).length} / {joueurs.length} présents</strong>
+            <strong>✅ {Object.values(presences).filter(v => v === "PRÉSENT").length} / {joueurs.length} présents</strong>
             <button onClick={exportExcel} style={{ padding: '5px 10px', cursor: 'pointer' }}>📊 Export</button>
           </div>
         )}
@@ -138,16 +137,31 @@ function App() {
       {selectedCreneau && (
         <>
           <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-            <button onClick={() => toggleAll(true)} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #2196F3', backgroundColor: 'white', cursor: 'pointer' }}>Tous Présents</button>
-            <button onClick={() => toggleAll(false)} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc', backgroundColor: 'white', cursor: 'pointer' }}>Tous Absents</button>
+            <button onClick={() => toggleAll("PRÉSENT")} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #2e7d32', backgroundColor: 'white', cursor: 'pointer' }}>Tous Présents</button>
+            <button onClick={() => toggleAll("ABSENT")} style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ccc', backgroundColor: 'white', cursor: 'pointer' }}>Tous Absents</button>
           </div>
 
           <div style={{ border: '1px solid #eee', borderRadius: '10px', overflow: 'hidden', marginBottom: '20px' }}>
             {joueurs.length > 0 ? joueurs.map(j => (
-              <div key={j.licence} onClick={() => setPresences(p => ({ ...p, [j.licence]: !p[j.licence] }))} 
-                   style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: '1px solid #eee', backgroundColor: presences[j.licence] ? '#e8f5e9' : 'white', cursor: 'pointer' }}>
-                <span>{j.nom} {j.prenom}</span>
-                <input type="checkbox" checked={presences[j.licence] || false} readOnly style={{ transform: 'scale(1.2)' }} />
+              <div key={j.licence} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: '1px solid #eee', alignItems: 'center' }}>
+                <span style={{ fontWeight: presences[j.licence] === "PRÉSENT" ? 'bold' : 'normal' }}>
+                  {j.nom} {j.prenom}
+                </span>
+                
+                <select 
+                  value={presences[j.licence] || "ABSENT"} 
+                  onChange={(e) => setPresences(p => ({ ...p, [j.licence]: e.target.value }))}
+                  style={{ 
+                    padding: '8px', 
+                    borderRadius: '5px', 
+                    border: '1px solid #ccc',
+                    backgroundColor: presences[j.licence] === "PRÉSENT" ? '#e8f5e9' : (presences[j.licence] === "EXCUSÉ" ? '#fff3e0' : 'white')
+                  }}
+                >
+                  <option value="PRÉSENT">✅ Présent</option>
+                  <option value="ABSENT">❌ Absent</option>
+                  <option value="EXCUSÉ">✉️ Excusé</option>
+                </select>
               </div>
             )) : <p style={{ textAlign: 'center', color: 'red', padding: '20px' }}>Aucun joueur trouvé pour ce créneau.</p>}
           </div>
