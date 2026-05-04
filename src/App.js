@@ -99,12 +99,12 @@ function App() {
   };
 
   return (
-    <div style={{ padding: '15px', maxWidth: '500px', margin: 'auto', fontFamily: 'Arial' }}>
-      <h2 style={{ textAlign: 'center' }}>🏸 Présences ABAC</h2>
+    <div style={{ padding: '10px', maxWidth: '600px', margin: 'auto', fontFamily: 'Arial' }}>
+      <h2 style={{ textAlign: 'center', fontSize: '1.2rem' }}>🏸 Présences ABAC</h2>
       
-      <div style={{ marginBottom: '20px', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+      <div style={{ marginBottom: '15px', padding: '10px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', backgroundColor: 'white' }}>
         <select 
-          style={{ width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px' }}
+          style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ccc' }}
           value={selectedCreneau?.creneau_code || ""}
           onChange={(e) => {
             const c = creneaux.find(x => x.creneau_code === e.target.value);
@@ -121,7 +121,7 @@ function App() {
 
         {selectedCreneau && (
           <select 
-            style={{ width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px' }}
+            style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ccc' }}
             value={date} onChange={(e) => setDate(e.target.value)}
           >
             {datesSaison.map(d => (
@@ -133,59 +133,61 @@ function App() {
         )}
 
         {selectedCreneau && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f0f0f0', padding: '10px', borderRadius: '8px' }}>
-            <strong>✅ {Object.values(presences).filter(v => v === "PRÉSENT").length} présents</strong>
-            <button onClick={exportExcel} style={{ padding: '5px 10px', cursor: 'pointer' }}>📊 Export</button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f9f9f9', padding: '8px', borderRadius: '8px' }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>✅ {Object.values(presences).filter(v => v === "PRÉSENT").length} présents</span>
+            <button onClick={exportExcel} style={{ padding: '5px 10px', fontSize: '0.8rem', cursor: 'pointer' }}>📊 Export</button>
           </div>
         )}
       </div>
 
       {selectedCreneau && (
         <>
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-            <button onClick={() => toggleAll("PRÉSENT")} style={{ flex: 1, padding: '10px', borderRadius: '5px', backgroundColor: '#e8f5e9', border: '1px solid #2e7d32', cursor: 'pointer' }}>Tous Présents</button>
-            <button onClick={() => toggleAll("ABSENT")} style={{ flex: 1, padding: '10px', borderRadius: '5px', backgroundColor: 'white', border: '1px solid #ccc', cursor: 'pointer' }}>Tous Absents</button>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+            <button onClick={() => toggleAll("PRÉSENT")} style={{ flex: 1, padding: '8px', borderRadius: '5px', backgroundColor: '#e8f5e9', border: '1px solid #2e7d32', fontSize: '0.8rem', cursor: 'pointer' }}>Tous Présents</button>
+            <button onClick={() => toggleAll("ABSENT")} style={{ flex: 1, padding: '8px', borderRadius: '5px', backgroundColor: 'white', border: '1px solid #ccc', fontSize: '0.8rem', cursor: 'pointer' }}>Tous Absents</button>
           </div>
 
-          <div style={{ border: '1px solid #eee', borderRadius: '10px', overflow: 'hidden', marginBottom: '20px' }}>
+          <div style={{ border: '1px solid #eee', borderRadius: '10px', backgroundColor: 'white', marginBottom: '15px' }}>
             {joueurs.map(j => {
               const statut = presences[j.licence] || "ABSENT";
               return (
-                <div key={j.licence} style={{ display: 'flex', flexDirection: 'column', padding: '12px', borderBottom: '1px solid #eee' }}>
-                  <span style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '10px' }}>{j.nom} {j.prenom}</span>
+                <div key={j.licence} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderBottom: '1px solid #eee', gap: '10px' }}>
+                  <span style={{ fontSize: '0.85rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {j.nom} {j.prenom}
+                  </span>
                   
-                  <div style={{ display: 'flex', gap: '5px' }}>
+                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                     <button 
                       onClick={() => setPresences(p => ({ ...p, [j.licence]: "PRÉSENT" }))}
                       style={{ 
-                        flex: 1, padding: '8px 2px', borderRadius: '5px', cursor: 'pointer', fontSize: '12px', border: '1px solid #2e7d32',
+                        padding: '6px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', border: '1px solid #2e7d32',
                         backgroundColor: statut === "PRÉSENT" ? '#2e7d32' : 'white',
                         color: statut === "PRÉSENT" ? 'white' : '#2e7d32'
                       }}
                     >
-                      ✅ Présent
+                      P
                     </button>
 
                     <button 
                       onClick={() => setPresences(p => ({ ...p, [j.licence]: "ABSENT" }))}
                       style={{ 
-                        flex: 1, padding: '8px 2px', borderRadius: '5px', cursor: 'pointer', fontSize: '12px', border: '1px solid #d32f2f',
+                        padding: '6px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', border: '1px solid #d32f2f',
                         backgroundColor: statut === "ABSENT" ? '#d32f2f' : 'white',
                         color: statut === "ABSENT" ? 'white' : '#d32f2f'
                       }}
                     >
-                      ❌ Absent
+                      A
                     </button>
 
                     <button 
                       onClick={() => setPresences(p => ({ ...p, [j.licence]: "EXCUSÉ" }))}
                       style={{ 
-                        flex: 1, padding: '8px 2px', borderRadius: '5px', cursor: 'pointer', fontSize: '12px', border: '1px solid #ed6c02',
+                        padding: '6px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', border: '1px solid #ed6c02',
                         backgroundColor: statut === "EXCUSÉ" ? '#ed6c02' : 'white',
                         color: statut === "EXCUSÉ" ? 'white' : '#ed6c02'
                       }}
                     >
-                      ✉️ Excusé
+                      E
                     </button>
                   </div>
                 </div>
@@ -193,7 +195,7 @@ function App() {
             })}
           </div>
 
-          <button onClick={sauvegarder} style={{ width: '100%', padding: '15px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+          <button onClick={sauvegarder} style={{ width: '100%', padding: '15px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', marginBottom: '20px' }}>
             💾 ENREGISTRER
           </button>
         </>
