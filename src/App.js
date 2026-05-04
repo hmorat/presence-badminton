@@ -134,7 +134,9 @@ function App() {
 
         {selectedCreneau && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f9f9f9', padding: '8px', borderRadius: '8px' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>✅ {Object.values(presences).filter(v => v === "PRÉSENT").length} présents</span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>
+              👥 Présents : {Object.values(presences).filter(v => v === "PRÉSENT").length} / {joueurs.length}
+            </span>
             <button onClick={exportExcel} style={{ padding: '5px 10px', fontSize: '0.8rem', cursor: 'pointer' }}>📊 Export</button>
           </div>
         )}
@@ -160,7 +162,7 @@ function App() {
                     <button 
                       onClick={() => setPresences(p => ({ ...p, [j.licence]: "PRÉSENT" }))}
                       style={{ 
-                        padding: '6px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', border: '1px solid #2e7d32',
+                        padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', border: '1px solid #2e7d32', minWidth: '35px',
                         backgroundColor: statut === "PRÉSENT" ? '#2e7d32' : 'white',
                         color: statut === "PRÉSENT" ? 'white' : '#2e7d32'
                       }}
@@ -171,7 +173,7 @@ function App() {
                     <button 
                       onClick={() => setPresences(p => ({ ...p, [j.licence]: "ABSENT" }))}
                       style={{ 
-                        padding: '6px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', border: '1px solid #d32f2f',
+                        padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', border: '1px solid #d32f2f', minWidth: '35px',
                         backgroundColor: statut === "ABSENT" ? '#d32f2f' : 'white',
                         color: statut === "ABSENT" ? 'white' : '#d32f2f'
                       }}
@@ -182,7 +184,7 @@ function App() {
                     <button 
                       onClick={() => setPresences(p => ({ ...p, [j.licence]: "EXCUSÉ" }))}
                       style={{ 
-                        padding: '6px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', border: '1px solid #ed6c02',
+                        padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', border: '1px solid #ed6c02', minWidth: '35px',
                         backgroundColor: statut === "EXCUSÉ" ? '#ed6c02' : 'white',
                         color: statut === "EXCUSÉ" ? 'white' : '#ed6c02'
                       }}
